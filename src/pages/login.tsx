@@ -1,22 +1,45 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-const Login = () => {
+const Login: React.FC = () => {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (username === "capstone" && password === "project") {
+      navigate("/home");
+    } else {
+      setError("Invalid username or password");
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#021224] text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
       <img
         src={logo}
         alt="PlayerProxy Logo"
-        className="w-48 h-48 mb-6 drop-shadow-2xl"
+        className="w-48 h-48 mb-6 drop-shadow-[0_0_25px_rgba(0,150,255,0.5)]"
       />
-      <h1 className="text-3xl font-bold mb-6 tracking-wide">PlayerProxy Login</h1>
+      <h1 className="text-3xl font-bold mb-6 tracking-wide">
+        PlayerProxy Login
+      </h1>
 
-      <form className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-lg w-80">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-neutral-900 p-8 rounded-2xl shadow-lg w-80 border border-gray-800"
+      >
         <div className="mb-4">
           <label className="block text-sm font-semibold mb-2">Username</label>
           <input
             type="text"
-            className="w-full px-3 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 outline-none focus:ring-2 focus:ring-blue-400"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-neutral-800 text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter your username"
           />
         </div>
@@ -25,14 +48,18 @@ const Login = () => {
           <label className="block text-sm font-semibold mb-2">Password</label>
           <input
             type="password"
-            className="w-full px-3 py-2 rounded-lg bg-white/20 text-white placeholder-gray-300 outline-none focus:ring-2 focus:ring-blue-400"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-neutral-800 text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter your password"
           />
         </div>
 
+        {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+
         <button
           type="submit"
-          className="w-full bg-blue-500 hover:bg-blue-700 transition-colors py-2 rounded-lg font-semibold"
+          className="w-full bg-blue-600 hover:bg-blue-700 transition-colors py-2 rounded-lg font-semibold"
         >
           Log In
         </button>

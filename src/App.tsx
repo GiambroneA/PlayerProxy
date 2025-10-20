@@ -1,9 +1,15 @@
-function App() {
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Login from "./pages/Login";
+import Home from "./pages/Home";
+
+const App: React.FC = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-blue-600 text-white text-3xl font-bold">
-      PlayerProxy is working 🎉
-    </div>
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/home" element={<Home />} />
+    </Routes>
   );
-}
+};
 
 export default App;
