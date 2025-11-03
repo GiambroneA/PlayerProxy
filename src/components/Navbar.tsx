@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 
 const Navbar: React.FC = () => {
@@ -13,20 +14,40 @@ const Navbar: React.FC = () => {
 
         {/* Right side - Navigation links */}
         <ul className="flex space-x-8 text-lg font-medium">
-          <li className="hover:text-blue-300 cursor-pointer transition-colors">
-            Home
+          <li>
+            <Link
+              to="/Home"
+              className="hover:text-blue-300 cursor-pointer transition-colors" >
+              Home
+            </Link>
           </li>
-          <li className="hover:text-blue-300 cursor-pointer transition-colors">
-            Roster
+          <li>
+            <Link
+              to="/Roster"
+              className="hover:text-blue-300 cursor-pointer transition-colors" >
+              Roster
+            </Link>
           </li>
-          <li className="hover:text-blue-300 cursor-pointer transition-colors">
-            Stats
+          <li>
+            <Link
+              to="/Stats"
+              className="hover:text-blue-300 cursor-pointer transition-colors">
+              Stats
+            </Link>
           </li>
-          <li className="hover:text-blue-300 cursor-pointer transition-colors">
-            League
+          <li>
+            <Link
+              to="/League"
+              className="hover:text-blue-300 cursor-pointer transition-colors">
+              League
+            </Link>
           </li>
-          <li className="hover:text-blue-300 cursor-pointer transition-colors">
-            User
+          <li>
+            <Link
+              to="/User"
+              className="hover:text-blue-300 cursor-pointer transition-colors">
+              User
+            </Link>
           </li>
         </ul>
       </div>
