@@ -13,7 +13,10 @@ const Login: React.FC = () => {
 
     if (username === "capstone" && password === "project") {
       navigate("/home");
-    } else {
+    } else if(username == "cap" && password == "proj"){
+      navigate("/home");
+    }
+      else {
       setError("Invalid username or password");
     }
   };
