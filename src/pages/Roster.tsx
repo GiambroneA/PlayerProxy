@@ -23,5 +23,6 @@ const Roster: React.FC = () => {
     loadPlayers();
   }, []);
 
-  // Rest of your component remains the same...
 };
+
+export default Roster;
