@@ -127,9 +127,60 @@ app.get("/api/allplayers", async (_req, res) => {
 });
 
 
+
+// GET /api/playerstats/:playerId - return all game stats for a player
+app.get("/api/playerstats/:playerId", async (req, res) => {
+  const session = openSession();
+  
+  try {
+    const { playerId } = req.params;
+    
+    // Query all GameStats for this player
+    const stats = await session
+      .query({ collection: "GameStats" })
+      .whereEquals("playerId", playerId)
+      .all();
+
+    res.json(stats);
+  } catch (e: any) {
+    console.error("STATS QUERY ERROR:", e);
+    res.status(500).json({
+      error: "Failed to fetch player stats",
+      detail: e.message || e
+    });
+  } finally {
+    session.dispose();
+  }
+});
 //queries below this line --------------------------------------
 
 
+// Debug endpoint to check GameStats collection
+app.get("/api/debug/gamestats", async (_req, res) => {
+  const session = openSession();
+  
+  try {
+    // Get all GameStats documents to see what's in the collection
+    const allGameStats = await session
+      .query({ collection: "GameStats" })
+      .all();
+    
+    console.log("All GameStats documents:", allGameStats);
+    
+    res.json({
+      count: allGameStats.length,
+      documents: allGameStats
+    });
+  } catch (e: any) {
+    console.error("DEBUG ERROR:", e);
+    res.status(500).json({
+      error: "Debug query failed",
+      detail: e.message || e
+    });
+  } finally {
+    session.dispose();
+  }
+});
 
 
 
