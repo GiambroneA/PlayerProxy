@@ -224,6 +224,37 @@ app.put("/api/update-player/:id", async (req, res) => {
   }
 });
 
+// POST /api/create-gamestats - create new game stats document
+app.post("/api/create-gamestats", async (req, res) => {
+  const session = openSession();
+  
+  try {
+    const gameStats = req.body;
+    
+    // Generate a unique ID
+    const id = `gamestats/${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Add the ID to the document
+    gameStats.id = id;
+    
+    await session.store(gameStats, id);
+    await session.saveChanges();
+    
+    res.json({ 
+      success: true, 
+      id: id,
+      message: "Game stats recorded successfully" 
+    });
+  } catch (e: any) {
+    console.error("CREATE GAMESTATS ERROR:", e);
+    res.status(500).json({
+      error: "Failed to save game stats",
+      detail: e.message || e
+    });
+  } finally {
+    session.dispose();
+  }
+});
 
 
 // ---------------- START SERVER ----------------

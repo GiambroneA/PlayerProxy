@@ -1,3 +1,4 @@
+//fetches player information
 import { Player , GameStats} from '../types/Player';
 
 

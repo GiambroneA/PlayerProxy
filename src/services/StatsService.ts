@@ -1,4 +1,4 @@
-// services/StatsService.ts
+// services/StatsService.ts -fetches data from db and makes calculations
 import { GameStats, StatRow } from '../types/Player';
 
 export class StatsService {
