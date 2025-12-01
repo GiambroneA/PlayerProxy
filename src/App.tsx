@@ -18,6 +18,7 @@ const App: React.FC = () => {
         <Route path="/League" element={<League />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/user" element={<User />} />
+        <Route path="/stats/:playerName?" element={<Stats />} />
       </Routes>
    
   );
