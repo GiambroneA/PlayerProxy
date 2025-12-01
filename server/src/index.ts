@@ -42,6 +42,62 @@ function openSession(): IDocumentSession {
   return store.openSession();
 }
 
+// ---------------- LEAGUE & TEAM TYPES / HELPERS ----------------
+
+interface LeagueDoc {
+  id?: string;
+  code: string;         // 5-character league code
+  name?: string | null;
+  createdAt: string;
+}
+
+interface TeamDoc {
+  id?: string;
+  code: string;         // 5-character team code
+  leagueCode: string;   // parent league's 5-char code
+  name: string;
+  createdAt: string;
+}
+
+// Generate a random 5-character code (letters + digits, no 0/O/1/I)
+function generateCode(length: number = 5): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < length; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// Ensure the code is unique within a collection by checking "code" field
+async function generateUniqueCode(
+  session: IDocumentSession,
+  collectionName: "Leagues" | "Teams",
+  maxAttempts: number = 10
+): Promise<string> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const candidate = generateCode(5);
+
+    const existing = await session
+      .query<any>({ collection: collectionName })
+      .whereEquals("code", candidate)
+      .firstOrNull();
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+  throw new Error(
+    `Unable to generate unique code for collection ${collectionName} after ${maxAttempts} attempts`
+  );
+}
+
+// Normalize user-entered codes (trim + uppercase)
+function normalizeCode(value: string): string {
+  return (value || "").trim().toUpperCase();
+}
+
+
 
 
 // TODO: change these to match your RavenDB Cloud setup
@@ -255,6 +311,187 @@ app.post("/api/create-gamestats", async (req, res) => {
     session.dispose();
   }
 });
+
+
+// ---------------- LEAGUE & TEAM ROUTES ----------------
+
+// POST /api/leagues
+// Create a new league and return the 5-character league code
+app.post("/api/leagues", async (req: Request, res: Response) => {
+  const { name } = req.body || {};
+  const session = openSession();
+
+  try {
+    const code = await generateUniqueCode(session, "Leagues");
+    const id = `leagues/${code}`;
+
+    const league: LeagueDoc = {
+      id,
+      code,
+      name: (typeof name === "string" && name.trim().length > 0) ? name.trim() : null,
+      createdAt: new Date().toISOString(),
+    };
+
+    await session.store(league, id);
+    const meta = session.advanced.getMetadataFor(league);
+    meta["@collection"] = "Leagues";
+    await session.saveChanges();
+
+    res.status(201).json(league);
+  } catch (e: any) {
+    console.error("CREATE LEAGUE ERROR:", e);
+    res.status(500).json({
+      error: "Failed to create league",
+      detail: e.message || e,
+    });
+  } finally {
+    session.dispose();
+  }
+});
+
+// POST /api/leagues/join
+// Body: { code: string } => finds league by 5-char code
+app.post("/api/leagues/join", async (req: Request, res: Response) => {
+  const rawCode = (req.body && req.body.code) || "";
+  const code = normalizeCode(rawCode);
+
+  if (!code || code.length !== 5) {
+    return res.status(400).json({ error: "League code must be 5 characters" });
+  }
+
+  const session = openSession();
+
+  try {
+    const league = await session
+      .query<LeagueDoc>({ collection: "Leagues" })
+      .whereEquals("code", code)
+      .firstOrNull();
+
+    if (!league) {
+      return res.status(404).json({ error: "League not found" });
+    }
+
+    res.json(league);
+  } catch (e: any) {
+    console.error("JOIN LEAGUE ERROR:", e);
+    res.status(500).json({
+      error: "Failed to join league",
+      detail: e.message || e,
+    });
+  } finally {
+    session.dispose();
+  }
+});
+
+// POST /api/leagues/:leagueCode/teams
+// Create a team inside a specific league (identified by leagueCode)
+app.post("/api/leagues/:leagueCode/teams", async (req: Request, res: Response) => {
+  const leagueCodeRaw = req.params.leagueCode;
+  const leagueCode = normalizeCode(leagueCodeRaw);
+  const { name } = req.body || {};
+
+  if (!leagueCode || leagueCode.length !== 5) {
+    return res.status(400).json({ error: "League code must be 5 characters" });
+  }
+
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return res.status(400).json({ error: "Team name is required" });
+  }
+
+  const session = openSession();
+
+  try {
+    // Ensure league exists
+    const league = await session
+      .query<LeagueDoc>({ collection: "Leagues" })
+      .whereEquals("code", leagueCode)
+      .firstOrNull();
+
+    if (!league) {
+      return res.status(404).json({ error: "League not found" });
+    }
+
+    const teamCode = await generateUniqueCode(session, "Teams");
+    const id = `teams/${leagueCode}-${teamCode}`;
+
+    const team: TeamDoc = {
+      id,
+      code: teamCode,
+      leagueCode,
+      name: name.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    await session.store(team, id);
+    const meta = session.advanced.getMetadataFor(team);
+    meta["@collection"] = "Teams";
+    await session.saveChanges();
+
+    res.status(201).json({ league, team });
+  } catch (e: any) {
+    console.error("CREATE TEAM ERROR:", e);
+    res.status(500).json({
+      error: "Failed to create team",
+      detail: e.message || e,
+    });
+  } finally {
+    session.dispose();
+  }
+});
+
+// POST /api/leagues/:leagueCode/teams/join
+// Body: { teamCode: string } => join existing team in a league
+app.post(
+  "/api/leagues/:leagueCode/teams/join",
+  async (req: Request, res: Response) => {
+    const leagueCodeRaw = req.params.leagueCode;
+    const leagueCode = normalizeCode(leagueCodeRaw);
+    const rawTeamCode = (req.body && req.body.teamCode) || "";
+    const teamCode = normalizeCode(rawTeamCode);
+
+    if (!leagueCode || leagueCode.length !== 5) {
+      return res.status(400).json({ error: "League code must be 5 characters" });
+    }
+
+    if (!teamCode || teamCode.length !== 5) {
+      return res.status(400).json({ error: "Team code must be 5 characters" });
+    }
+
+    const session = openSession();
+
+    try {
+      const league = await session
+        .query<LeagueDoc>({ collection: "Leagues" })
+        .whereEquals("code", leagueCode)
+        .firstOrNull();
+
+      if (!league) {
+        return res.status(404).json({ error: "League not found" });
+      }
+
+      const team = await session
+        .query<TeamDoc>({ collection: "Teams" })
+        .whereEquals("code", teamCode)
+        .whereEquals("leagueCode", leagueCode)
+        .firstOrNull();
+
+      if (!team) {
+        return res.status(404).json({ error: "Team not found in this league" });
+      }
+
+      res.json({ league, team });
+    } catch (e: any) {
+      console.error("JOIN TEAM ERROR:", e);
+      res.status(500).json({
+        error: "Failed to join team",
+        detail: e.message || e,
+      });
+    } finally {
+      session.dispose();
+    }
+  }
+);
+
 
 
 // ---------------- START SERVER ----------------
