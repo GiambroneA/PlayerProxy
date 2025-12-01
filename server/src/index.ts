@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import { DocumentStore, IDocumentSession } from "ravendb";
+import bcrypt from "bcryptjs";
 
 import fs from "fs";
 import path from "path";
@@ -97,11 +98,27 @@ function normalizeCode(value: string): string {
   return (value || "").trim().toUpperCase();
 }
 
+interface UserDoc {
+  id?: string;          // users/{usernameLower}
+  username: string;     // original case
+  usernameLower: string;
+  passwordHash: string;
+  createdAt: string;
+}
+
+function normalizeUsername(value: string): string {
+  return (value || "").trim();
+}
+
+function normalizeUsernameLower(value: string): string {
+  return normalizeUsername(value).toLowerCase();
+}
 
 
 
-// TODO: change these to match your RavenDB Cloud setup
-const RAVENDB_URLS = ["https://a.free.playerproxy.ravendb.cloud"]; // e.g. "https://a.b.c.cloud.ravendb.cloud"
+
+
+const RAVENDB_URLS = ["https://a.free.playerproxy.ravendb.cloud"]; 
 const RAVENDB_DB = "PlayerProxy"; // e.g. "PlayerProxyDB"
 
 // Create the DocumentStore once and reuse it
@@ -492,6 +509,124 @@ app.post(
   }
 );
 
+// ---------------- USER AUTH ROUTES ----------------
+
+// POST /api/users/register
+// Body: { username, password }
+app.post("/api/users/register", async (req: Request, res: Response) => {
+  const { username, password } = req.body || {};
+  const session = openSession();
+
+  try {
+    const cleanUsername = normalizeUsername(username);
+    const usernameLower = normalizeUsernameLower(username);
+
+    if (!cleanUsername || !password) {
+      return res
+        .status(400)
+        .json({ error: "Username and password are required." });
+    }
+
+    if (cleanUsername.length < 3) {
+      return res
+        .status(400)
+        .json({ error: "Username must be at least 3 characters." });
+    }
+
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 6 characters." });
+    }
+
+    // Check if username already exists (case-insensitive)
+    const existing = await session
+      .query<UserDoc>({ collection: "Users" })
+      .whereEquals("usernameLower", usernameLower)
+      .firstOrNull();
+
+    if (existing) {
+      return res.status(409).json({ error: "Username already taken." });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const id = `users/${usernameLower}`;
+
+    const user: UserDoc = {
+      id,
+      username: cleanUsername,
+      usernameLower,
+      passwordHash,
+      createdAt: new Date().toISOString(),
+    };
+
+    await session.store(user, id);
+
+    const meta = session.advanced.getMetadataFor(user);
+    (meta as any)["@collection"] = "Users";
+
+    await session.saveChanges();
+
+    // Never send the password hash back
+    res.status(201).json({
+      id: user.id,
+      username: user.username,
+      createdAt: user.createdAt,
+    });
+  } catch (e: any) {
+    console.error("REGISTER ERROR:", e);
+    res
+      .status(500)
+      .json({ error: "Failed to register user", detail: e.message || e });
+  } finally {
+    session.dispose();
+  }
+});
+
+// POST /api/users/login
+// Body: { username, password }
+app.post("/api/users/login", async (req: Request, res: Response) => {
+  const { username, password } = req.body || {};
+  const session = openSession();
+
+  try {
+    const cleanUsername = normalizeUsername(username);
+    const usernameLower = normalizeUsernameLower(username);
+
+    if (!cleanUsername || !password) {
+      return res
+        .status(400)
+        .json({ error: "Username and password are required." });
+    }
+
+    const user = await session
+      .query<UserDoc>({ collection: "Users" })
+      .whereEquals("usernameLower", usernameLower)
+      .firstOrNull();
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid username or password." });
+    }
+
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) {
+      return res.status(400).json({ error: "Invalid username or password." });
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      createdAt: user.createdAt,
+    });
+  } catch (e: any) {
+    console.error("LOGIN ERROR:", e);
+    res
+      .status(500)
+      .json({ error: "Failed to login", detail: e.message || e });
+  } finally {
+    session.dispose();
+  }
+});
 
 
 // ---------------- START SERVER ----------------
