@@ -1,4 +1,6 @@
+//fetches player information
 import { Player , GameStats} from '../types/Player';
+
 
 export class PlayerService {
   static async getAllPlayers(): Promise<Player[]> {
@@ -48,4 +50,28 @@ export class PlayerService {
     const players = await this.getAllPlayers();
     return players.filter(player => player.Teams && player.Teams.length > 0);
   }
+
+  //update player
+  static async updatePlayer(playerId: string, updates: Partial<Player>): Promise<Player> {
+  try {
+    const res = await fetch(`/api/update-player/${encodeURIComponent(playerId)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates)
+    });
+    
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || body.error || `HTTP ${res.status}`);
+    }
+    
+    const result = await res.json();
+    return result.player;
+  } catch (error) {
+    console.error('Failed to update player:', error);
+    throw error;
+  }
+}
 }

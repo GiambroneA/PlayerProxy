@@ -7,6 +7,7 @@ import League from "./pages/League";
 import Roster from "./pages/Roster";
 import Stats from "./pages/Stats";
 import User from "./pages/User";
+import RecordStats from "./pages/RecordStats";
 
 const App: React.FC = () => {
   return (
@@ -19,6 +20,7 @@ const App: React.FC = () => {
         <Route path="/stats" element={<Stats />} />
         <Route path="/user" element={<User />} />
         <Route path="/stats/:playerName?" element={<Stats />} />
+        <Route path="/record-stats" element={<RecordStats />} />
       </Routes>
    
   );
