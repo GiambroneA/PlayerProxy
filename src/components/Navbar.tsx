@@ -25,7 +25,7 @@ const Navbar: React.FC = () => {
             <Link
               to="/Roster"
               className="hover:text-blue-300 cursor-pointer transition-colors" >
-              Roster
+              Rosters
             </Link>
           </li>
           <li>
