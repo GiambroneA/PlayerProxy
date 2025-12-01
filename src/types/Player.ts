@@ -3,6 +3,9 @@ export interface Player {
   id: string;
   Name: string;
   Number: string;
+  DoB: string;
+  Height: number[];
+  Weight: number;
   Teams: {
     Sport: string;
     Team: string;

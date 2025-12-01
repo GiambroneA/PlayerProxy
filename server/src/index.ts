@@ -182,6 +182,48 @@ app.get("/api/debug/gamestats", async (_req, res) => {
   }
 });
 
+// PUT /api/update-player/:id - update player document
+app.put("/api/update-player/:id", async (req, res) => {
+  const session = openSession();
+  
+  try {
+    const { id } = req.params;
+    const updates = req.body as Record<string, any>; // Type the updates
+
+    console.log("Updating player ID:", id);
+    console.log("Updates:", updates);
+    
+    // Load existing player
+    const player = await session.load(id);
+    if (!player) {
+      return res.status(404).json({ error: "Player not found" });
+    }
+    
+    // Apply updates (excluding @metadata and id)
+    Object.keys(updates).forEach(key => {
+      if (key !== '@metadata' && key !== 'id') {
+        (player as Record<string, any>)[key] = updates[key];
+      }
+    });
+    
+    await session.saveChanges();
+    
+    res.json({ 
+      success: true, 
+      message: "Player updated successfully",
+      player 
+    });
+  } catch (e: any) {
+    console.error("UPDATE ERROR:", e);
+    res.status(500).json({
+      error: "Failed to update player",
+      detail: e.message || e
+    });
+  } finally {
+    session.dispose();
+  }
+});
+
 
 
 // ---------------- START SERVER ----------------
